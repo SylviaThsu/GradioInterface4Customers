@@ -144,60 +144,76 @@ def process_user_message(user_input, all_messages, debug=True):
         neg_str = "I apologize, but I cannot provide the information you need. I will transfer you to a human customer service representative for further assistance."
         return neg_str, all_messages
 
+# Function to log each interaction between the user and the AI
 def log_interaction(user_input, ai_response, products, categories):
+    # Create a dictionary with all the information to log
     log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "user_input": user_input,
-        "ai_response": ai_response,
+        "timestamp": datetime.now().isoformat(),  # Current time in ISO format
+        "user_input": user_input,                 # What the user asked
+        "ai_response": ai_response,               # The AI's response
         "metadata": {
-            "products": products,
-            "categories": categories
+            "products": products,                 # Products mentioned in the interaction
+            "categories": categories              # Categories mentioned in the interaction
         }
     }
     
+    # Use a lock to ensure thread-safe file writing
     with log_lock:
+        # Open the log file in append mode
         with open("interaction_log.json", "a") as log_file:
+            # Write the log entry as a JSON object
             json.dump(log_entry, log_file)
-            log_file.write("\n")
+            log_file.write("\n")  # Add a newline for readability
 
+# Function to extract products and categories from the AI's parsed response
 def extract_products_and_categories(category_and_product_list):
     products = []
-    categories = set()
+    categories = set()  # Use a set to avoid duplicates
     for item in category_and_product_list:
         if isinstance(item, (list, tuple)) and len(item) >= 2:
-            categories.add(item[0])
-            products.append(item[1])
+            # If item is a list or tuple with at least 2 elements
+            categories.add(item[0])  # First element is the category
+            products.append(item[1])  # Second element is the product
         elif isinstance(item, dict):
-            categories.add(item.get('category', ''))
-            products.append(item.get('product', ''))
-    return products, list(categories)
+            # If item is a dictionary
+            categories.add(item.get('category', ''))  # Get category, or empty string if not found
+            products.append(item.get('product', ''))  # Get product, or empty string if not found
+    return products, list(categories)  # Convert categories back to a list
 
+# Main chatbot function that processes user input and generates responses
 def chatbot(user_input, history):
+    # Convert chat history to a format suitable for the AI model
     all_messages = [{'role': 'user' if i % 2 == 0 else 'assistant', 'content': msg} for i, (_, msg) in enumerate(history)]
     
     try:
+        # Process the user's message and get AI response
         response, updated_messages = process_user_message(user_input, all_messages)
         
+        # Extract product and category information from the user's input
         category_and_product_response = utils.find_category_and_product_only(
             user_input, utils.get_products_and_category())
         category_and_product_list = utils.read_string_to_list(category_and_product_response)
         
+        # Extract products and categories from the parsed response
         products, categories = extract_products_and_categories(category_and_product_list)
         
+        # Log the interaction
         log_interaction(user_input, response, products, categories)
     
     except Exception as e:
+        # If an error occurs, print it and return an apologetic message
         print(f"An error occurred: {str(e)}")
         response = "I apologize, but an error occurred while processing your request. Please try again or contact support if the issue persists."
         products, categories = [], []
         
+        # Log the error
         log_interaction(user_input, f"Error: {str(e)}", products, categories)
     
     return response
 
-# Create Gradio interface
+# Create Gradio interface for the chatbot
 iface = gr.ChatInterface(
-    chatbot,
+    chatbot,  # The main chatbot function
     title="AI Customer Service Assistant",
     description="Ask about our electronic products!",
     theme="soft",
@@ -208,6 +224,6 @@ iface = gr.ChatInterface(
     ],
 )
 
-# Launch the interface
+# Launch the interface if this script is run directly
 if __name__ == "__main__":
     iface.launch()

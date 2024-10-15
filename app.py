@@ -9,11 +9,11 @@ import json
 from datetime import datetime
 import threading
 
-# Set your OpenAI API key from the environment variable
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY") # 'ollama'  
+# Set OpenAI API key from the environment variable
+# load_dotenv()
+# api_key = os.getenv("OPENAI_API_KEY") # 'ollama'  
 
-# api_key = os.environ.get("OPENAI_API_KEY")
+api_key = os.environ.get("OPENAI_API_KEY")
 model = "gpt-4o-mini"
 base_url = None
 
